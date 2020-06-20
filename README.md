@@ -1,5 +1,10 @@
 # one-man-against-the-machine
-My general repository for trying out new services in AWS and building out some random infrastructure, not sure if it will go anywhere.
 
-# command and control instance
-Basic instance to spin-up other instances and infrastructure.  Currently only contains a basic user_data script for ec2.
+Basic repository for testing out new AWS services.  This is going to be pretty scrappy code.
+
+# Projects
+
+## Command and Control instance
+
+Basic terminal that I can use instead of switching between MacOSX, Linux Laptop or Windows.  I start the computer and 
+it should download the relevant code for me.

@@ -4,52 +4,19 @@ import sys
 import os
 import boto3
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
-ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID")
-
-def get_boto_client():
-    """ get a basic boto client """
-    client = boto3.client('ec2',region_name='us-east-1')
-    return client
-
-def get_command_and_control_instances(client):
-    """ get command and control class clients only"""
-    return client.describe_instances(
-        Filters=[
-            {
-                'Name':'iam-instance-profile.arn',
-                'Values': [
-                    'arn:aws:iam::{}:instance-profile/command_and_control'.format(ACCOUNT_ID)
-                ]
-            }
-        ]
-    )
-
-def number_of_instances(reservations):
-    """ get number of instances """
-    if (len(reservations) != 1):
-        print("too many reservations...existing...")
-        sys.exit(1)
-    try:
-        instances = reservations['instances']
-    except:
-        print("reservations has no instances key...exiting")
-        instances = []
-
-    return len(instances)
+from common import get_account_id, get_boto_client, get_command_and_control_reservations
 
 def create_command_and_control_instance(client):
+    """ create a new ubuntu 18.04 command and control instance"""
     if (os.path.exists('user_data.sh')):
+        print("user data exists...")
         with open('user_data.sh','r') as user_data_script:
             user_data = user_data_script.read()
     else:
         print("Can't find user data file...exiting...")
         sys.exit(1)
 
-    """ create a new ubuntu 18.04 command and control instance"""
+    
     response = client.run_instances(
         InstanceType='t2.micro',
         MinCount=1,
@@ -89,17 +56,40 @@ def create_command_and_control_instance(client):
         ],
         UserData=user_data
     )
+
+    print("AWS API response:")
+    print(response)
+
     return response
 
 if __name__ == "__main__":
-    client = get_boto_client()
-    reservations = get_command_and_control_instances(client).get('Reservations',[])
+    print("starting command and control instance")
+    account_id=get_account_id()
 
-    if (number_of_instances(reservations) == 0):
+    if (account_id is None):
+        print("account id does not exist...exiting")
+        sys.exit(1)
+
+    client = get_boto_client()
+    reservations = get_command_and_control_reservations(client,account_id)
+
+    instances = []
+    for reservation in reservations:
+        if 'Instances' in reservation:
+            for instance in reservation['Instances']:
+                instances.append(instance['InstanceId'])
+
+    print("Found the following instances:")
+    for instance in instances:
+        print(instance)
+
+    if (len(instances)==0):
         print("no client found...spinning up...")
         response = create_command_and_control_instance(client)
-        print("This is the response:")
-        print(response)
+    elif(len(instances)==1):
+        print("command and control instance already exists")
+    elif (len(instances) > 1):
+        print("too many command and control instances")
     else:
         print("number of instances not 0...exiting")
         sys.exit(1)
